@@ -1,5 +1,10 @@
+import { useState } from 'react';
 import { Calendar as CalendarIcon, Clock, Award, Medal, Trophy, MapPin, Mail } from 'lucide-react';
 import clsx from 'clsx';
+import { useAuth } from '../context/AuthContext';
+import { uploadProfilePhoto } from '../services/storageService';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../services/firebaseConfig';
 
 const StatsCard = ({ label, value, sublabel, icon: Icon, color }) => (
     <div className="bg-surface p-4 rounded-xl border border-white/5 flex items-center gap-4">
@@ -29,18 +34,67 @@ const Badge = ({ icon: Icon, label, locked }) => (
 );
 
 const Profile = () => {
+    const { currentUser } = useAuth();
+    const [uploading, setUploading] = useState(false);
+
+    // Use local state for immediate feedback, fallback to currentUser data
+    const [photoURL, setPhotoURL] = useState(currentUser?.photoURL || "https://ui-avatars.com/api/?name=User&background=random");
+
+    const handlePhotoUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            // 1. Upload to Storage
+            const url = await uploadProfilePhoto(file, currentUser.uid);
+
+            // 2. Update Firestore User Doc
+            const userRef = doc(db, "users", currentUser.uid);
+            await updateDoc(userRef, { photoURL: url });
+
+            // 3. Update Local State
+            setPhotoURL(url);
+
+            // Note: AuthContext might need a refresh logic or we just rely on page reload/user metadata update
+            // ideally we'd update the context state too, but this shows immediate result.
+        } catch (error) {
+            console.error("Failed to upload photo", error);
+            alert("Failed to upload photo. Please try again.");
+        } finally {
+            setUploading(false);
+        }
+    };
+
     return (
         <div className="pb-20 md:pb-0 max-w-2xl mx-auto space-y-8">
             {/* Header / User Info */}
             <div className="bg-surface rounded-2xl p-6 border border-white/5 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-                <div className="relative">
-                    <div className="w-24 h-24 rounded-full p-1 border-2 border-primary">
+                <div className="relative group cursor-pointer">
+                    <input
+                        type="file"
+                        accept="image/*"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        onChange={handlePhotoUpload}
+                        disabled={uploading}
+                    />
+                    <div className={clsx("w-24 h-24 rounded-full p-1 border-2 border-primary transition-opacity", uploading && "opacity-50")}>
                         <img
-                            src="https://ui-avatars.com/api/?name=User&background=random"
+                            src={currentUser?.photoURL || photoURL}
                             alt="User"
-                            className="w-full h-full rounded-full"
+                            className="w-full h-full rounded-full object-cover"
                         />
                     </div>
+                    {!uploading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                            <span className="text-xs text-white font-bold">Change</span>
+                        </div>
+                    )}
+                    {uploading && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                    )}
                     <div className="absolute bottom-0 right-0 bg-surface rounded-full p-1 border border-white/10">
                         <div className="w-4 h-4 rounded-full bg-green-500 animate-pulse"></div>
                     </div>
@@ -48,16 +102,16 @@ const Profile = () => {
 
                 <div className="flex-1 space-y-2">
                     <div>
-                        <h1 className="text-2xl font-bold text-main">Volunteer User</h1>
-                        <p className="text-primary font-medium">Front Office & Bar</p>
+                        <h1 className="text-2xl font-bold text-main">{currentUser?.name || currentUser?.email || 'Volunteer User'}</h1>
+                        <p className="text-primary font-medium capitalize">{currentUser?.role || 'Volunteer'}</p>
                     </div>
 
                     <div className="flex flex-wrap justify-center md:justify-start gap-3 text-sm text-muted">
                         <span className="flex items-center gap-1">
-                            <MapPin size={14} /> Roots Hostel
+                            <MapPin size={14} /> {currentUser?.hostelName || 'Roots Hostel'}
                         </span>
                         <span className="flex items-center gap-1">
-                            <Mail size={14} /> volunteer@roots.com
+                            <Mail size={14} /> {currentUser?.email}
                         </span>
                     </div>
                 </div>
