@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Menu } from 'lucide-react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import NotificationPrompt from '../components/NotificationPrompt';
 
 const Layout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -35,6 +36,9 @@ const Layout = () => {
                     <Outlet />
                 </main>
             </div>
+
+            {/* Notification Permission Prompt */}
+            <NotificationPrompt />
         </div>
     );
 };

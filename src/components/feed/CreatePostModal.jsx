@@ -1,9 +1,9 @@
-import { X, Send, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { X, Send, Image as ImageIcon, Loader2, AtSign, Users, Check } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 import clsx from 'clsx';
 import { useAuth } from '../../context/AuthContext';
 import { uploadPostImage } from '../../services/storageService';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebaseConfig';
 
 const PRESETS = [
@@ -15,6 +15,13 @@ const PRESETS = [
     "Anyone for a walk? 🚶"
 ];
 
+const AVAILABLE_ROLES = [
+    { id: 'volunteer', label: 'Volunteers', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+    { id: 'staff', label: 'Staff', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
+    { id: 'manager', label: 'Managers', color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+    { id: 'admin', label: 'Admins', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
+];
+
 const CreatePostModal = ({ isOpen, onClose }) => {
     const { currentUser } = useAuth();
     const [message, setMessage] = useState('');
@@ -22,6 +29,54 @@ const CreatePostModal = ({ isOpen, onClose }) => {
     const [imagePreview, setImagePreview] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const fileInputRef = useRef(null);
+
+    // Tagging State
+    const [showTagSelector, setShowTagSelector] = useState(false);
+    const [taggedRoles, setTaggedRoles] = useState([]);
+    const [taggedUsers, setTaggedUsers] = useState([]);
+    const [workspaceUsers, setWorkspaceUsers] = useState([]);
+    const [loadingUsers, setLoadingUsers] = useState(false);
+
+    // Fetch workspace users when modal opens
+    useEffect(() => {
+        if (isOpen && currentUser?.workspaceId) {
+            const fetchUsers = async () => {
+                setLoadingUsers(true);
+                try {
+                    const q = query(
+                        collection(db, "users"),
+                        where("workspaceId", "==", currentUser.workspaceId)
+                    );
+                    const snapshot = await getDocs(q);
+                    const users = [];
+                    snapshot.forEach((doc) => {
+                        // Exclude current user from the list
+                        if (doc.id !== currentUser.uid) {
+                            users.push({ id: doc.id, ...doc.data() });
+                        }
+                    });
+                    setWorkspaceUsers(users);
+                } catch (error) {
+                    console.error("Error fetching users:", error);
+                } finally {
+                    setLoadingUsers(false);
+                }
+            };
+            fetchUsers();
+        }
+    }, [isOpen, currentUser]);
+
+    // Reset state when modal closes
+    useEffect(() => {
+        if (!isOpen) {
+            setMessage('');
+            setImage(null);
+            setImagePreview(null);
+            setShowTagSelector(false);
+            setTaggedRoles([]);
+            setTaggedUsers([]);
+        }
+    }, [isOpen]);
 
     if (!isOpen) return null;
 
@@ -47,8 +102,45 @@ const CreatePostModal = ({ isOpen, onClose }) => {
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
+    const toggleRole = (roleId) => {
+        setTaggedRoles(prev =>
+            prev.includes(roleId)
+                ? prev.filter(r => r !== roleId)
+                : [...prev, roleId]
+        );
+    };
+
+    const toggleUser = (userId) => {
+        setTaggedUsers(prev =>
+            prev.includes(userId)
+                ? prev.filter(u => u !== userId)
+                : [...prev, userId]
+        );
+    };
+
+    const removeTag = (type, id) => {
+        if (type === 'role') {
+            setTaggedRoles(prev => prev.filter(r => r !== id));
+        } else {
+            setTaggedUsers(prev => prev.filter(u => u !== id));
+        }
+    };
+
+    const getUserName = (userId) => {
+        const user = workspaceUsers.find(u => u.id === userId);
+        return user?.name || user?.email || 'Unknown';
+    };
+
     const handlePost = async () => {
         if (!message.trim() && !image) return;
+
+        // Guard clause: ensure workspaceId exists
+        if (!currentUser?.workspaceId) {
+            alert("Unable to create post: Your account is missing workspace information. Please contact an administrator.");
+            console.error("CreatePostModal: workspaceId is undefined for user:", currentUser?.uid);
+            return;
+        }
+
         setIsLoading(true);
 
         try {
@@ -58,7 +150,7 @@ const CreatePostModal = ({ isOpen, onClose }) => {
                 imageUrl = await uploadPostImage(image, currentUser.uid);
             }
 
-            // Create Post in Firestore
+            // Create Post in Firestore with tags
             await addDoc(collection(db, "posts"), {
                 content: message,
                 image: imageUrl,
@@ -69,11 +161,16 @@ const CreatePostModal = ({ isOpen, onClose }) => {
                 createdAt: serverTimestamp(),
                 likes: [],
                 comments: 0,
-                type: 'user'
+                type: 'user',
+                // New tag fields
+                taggedRoles: taggedRoles,
+                taggedUsers: taggedUsers
             });
 
             setMessage('');
             removeImage();
+            setTaggedRoles([]);
+            setTaggedUsers([]);
             onClose();
 
         } catch (error) {
@@ -84,14 +181,16 @@ const CreatePostModal = ({ isOpen, onClose }) => {
         }
     };
 
+    const hasAnyTags = taggedRoles.length > 0 || taggedUsers.length > 0;
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-            <div className="relative w-full max-w-lg bg-surface border border-gray-800 rounded-2xl p-6 shadow-xl animate-in fade-in zoom-in duration-200">
+            <div className="relative w-full max-w-lg bg-surface border border-gray-800 rounded-2xl p-6 shadow-xl animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-bold text-main">New Post</h3>
-                    <button onClick={onClose} className="p-2 text-muted hover:text-main rounded-full hover:bg-gray-200 dark:bg-white/10 transition-colors">
+                    <button onClick={onClose} className="p-2 text-muted hover:text-main rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
                         <X size={20} />
                     </button>
                 </div>
@@ -105,6 +204,48 @@ const CreatePostModal = ({ isOpen, onClose }) => {
                         autoFocus
                     />
 
+                    {/* Selected Tags Display */}
+                    {hasAnyTags && (
+                        <div className="flex flex-wrap gap-2">
+                            {taggedRoles.map(roleId => {
+                                const role = AVAILABLE_ROLES.find(r => r.id === roleId);
+                                return (
+                                    <span
+                                        key={`role-${roleId}`}
+                                        className={clsx(
+                                            "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border",
+                                            role?.color || "bg-gray-500/20 text-gray-400"
+                                        )}
+                                    >
+                                        <Users size={12} />
+                                        {role?.label}
+                                        <button
+                                            onClick={() => removeTag('role', roleId)}
+                                            className="ml-1 hover:text-white transition-colors"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </span>
+                                );
+                            })}
+                            {taggedUsers.map(userId => (
+                                <span
+                                    key={`user-${userId}`}
+                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-primary/20 text-primary border-primary/30"
+                                >
+                                    <AtSign size={12} />
+                                    {getUserName(userId)}
+                                    <button
+                                        onClick={() => removeTag('user', userId)}
+                                        className="ml-1 hover:text-white transition-colors"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </span>
+                            ))}
+                        </div>
+                    )}
+
                     {imagePreview && (
                         <div className="relative rounded-xl overflow-hidden border border-white/10 max-h-48">
                             <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
@@ -117,6 +258,7 @@ const CreatePostModal = ({ isOpen, onClose }) => {
                         </div>
                     )}
 
+                    {/* Action Buttons */}
                     <div className="flex items-center gap-2">
                         <input
                             type="file"
@@ -132,7 +274,82 @@ const CreatePostModal = ({ isOpen, onClose }) => {
                             <ImageIcon size={16} />
                             Add Image
                         </button>
+                        <button
+                            onClick={() => setShowTagSelector(!showTagSelector)}
+                            className={clsx(
+                                "flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all",
+                                showTagSelector || hasAnyTags
+                                    ? "bg-primary/20 border-primary/50 text-primary"
+                                    : "bg-gray-100 dark:bg-white/5 border-gray-800 text-muted hover:text-primary hover:border-primary/50"
+                            )}
+                        >
+                            <AtSign size={16} />
+                            Tag
+                            {hasAnyTags && (
+                                <span className="bg-primary text-background text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                                    {taggedRoles.length + taggedUsers.length}
+                                </span>
+                            )}
+                        </button>
                     </div>
+
+                    {/* Tag Selector Panel */}
+                    {showTagSelector && (
+                        <div className="bg-background border border-gray-800 rounded-xl p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                            {/* Role Selection */}
+                            <div>
+                                <p className="text-xs font-medium text-muted uppercase tracking-wider mb-2">Tag Roles</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {AVAILABLE_ROLES.map(role => (
+                                        <button
+                                            key={role.id}
+                                            onClick={() => toggleRole(role.id)}
+                                            className={clsx(
+                                                "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all",
+                                                taggedRoles.includes(role.id)
+                                                    ? role.color
+                                                    : "bg-gray-100 dark:bg-white/5 border-gray-700 text-muted hover:border-gray-600"
+                                            )}
+                                        >
+                                            {taggedRoles.includes(role.id) && <Check size={12} />}
+                                            {role.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* User Selection */}
+                            <div>
+                                <p className="text-xs font-medium text-muted uppercase tracking-wider mb-2">Tag People</p>
+                                {loadingUsers ? (
+                                    <div className="flex items-center gap-2 text-muted text-sm">
+                                        <Loader2 size={14} className="animate-spin" />
+                                        Loading users...
+                                    </div>
+                                ) : workspaceUsers.length === 0 ? (
+                                    <p className="text-muted text-sm">No other users in workspace</p>
+                                ) : (
+                                    <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                                        {workspaceUsers.map(user => (
+                                            <button
+                                                key={user.id}
+                                                onClick={() => toggleUser(user.id)}
+                                                className={clsx(
+                                                    "flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-all",
+                                                    taggedUsers.includes(user.id)
+                                                        ? "bg-primary/20 border-primary/50 text-primary"
+                                                        : "bg-gray-100 dark:bg-white/5 border-gray-700 text-muted hover:border-gray-600"
+                                                )}
+                                            >
+                                                {taggedUsers.includes(user.id) && <Check size={12} />}
+                                                {user.name || user.email}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     <div>
                         <p className="text-xs font-medium text-muted uppercase tracking-wider mb-2">Quick Presets</p>
@@ -145,7 +362,7 @@ const CreatePostModal = ({ isOpen, onClose }) => {
                                         "px-3 py-1.5 rounded-full border text-sm transition-all active:scale-95",
                                         message === preset
                                             ? "bg-primary text-background border-primary font-medium"
-                                            : "bg-gray-100 dark:bg-white/5 border-gray-800 text-muted hover:bg-gray-200 dark:bg-white/10 hover:text-main hover:border-gray-700"
+                                            : "bg-gray-100 dark:bg-white/5 border-gray-800 text-muted hover:bg-gray-200 dark:hover:bg-white/10 hover:text-main hover:border-gray-700"
                                     )}
                                 >
                                     {preset}
@@ -171,6 +388,3 @@ const CreatePostModal = ({ isOpen, onClose }) => {
 };
 
 export default CreatePostModal;
-
-
-

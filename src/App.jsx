@@ -18,10 +18,42 @@ import Profile from './pages/Profile';
 import VolunteerCalendar from './pages/VolunteerCalendar';
 import Location from './pages/Location';
 import Shopping from './pages/Shopping';
+import { useRegisterSW } from 'virtual:pwa-register/react';
+import { useEffect } from 'react';
+
+// Component to handle PWA updates
+function UpdateChecker() {
+  const {
+    needRefresh: [needRefresh, setNeedRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegistered(r) {
+      console.log('SW Registered:', r);
+      // Check for updates every hour
+      r && setInterval(() => {
+        console.log('Checking for SW update...');
+        r.update();
+      }, 60 * 60 * 1000);
+    },
+    onRegisterError(error) {
+      console.log('SW registration error', error);
+    },
+  });
+
+  useEffect(() => {
+    if (needRefresh) {
+      console.log('New content available, updating...');
+      updateServiceWorker(true);
+    }
+  }, [needRefresh, updateServiceWorker]);
+
+  return null;
+}
 
 function App() {
   return (
     <ThemeProvider>
+      <UpdateChecker />
       <AuthProvider>
         <Router>
           <Routes>
@@ -35,6 +67,7 @@ function App() {
               </ProtectedRoute>
             }>
               <Route index element={<Feed />} />
+              <Route path="feed" element={<Feed />} />
               <Route path="moments" element={<Moments />} />
               <Route path="kitchen" element={<Kitchen />} />
               <Route path="operations" element={<Operations />} />

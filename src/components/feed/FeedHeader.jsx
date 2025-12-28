@@ -1,5 +1,10 @@
+import { useState, useEffect } from 'react';
 import { Bell } from 'lucide-react';
 import clsx from 'clsx';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../../services/firebaseConfig';
+import { useAuth } from '../../context/AuthContext';
+import NotificationsModal from './NotificationsModal';
 
 const staffMembers = [
     { id: 1, name: 'Ana Silva', role: 'front office', avatar: 'https://ui-avatars.com/api/?name=Ana+Silva&background=3B82F6&color=fff' },
@@ -18,6 +23,26 @@ const roleColors = {
 };
 
 const FeedHeader = () => {
+    const { currentUser } = useAuth();
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    // Listen for unread notifications
+    useEffect(() => {
+        if (!currentUser?.uid) return;
+
+        const q = query(
+            collection(db, "users", currentUser.uid, "notifications"),
+            where("read", "==", false)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            setUnreadCount(snapshot.size);
+        });
+
+        return () => unsubscribe();
+    }, [currentUser?.uid]);
+
     return (
         <div className="mb-6 space-y-4">
             <div className="flex items-center justify-between">
@@ -28,10 +53,23 @@ const FeedHeader = () => {
                         <span className="text-xs font-medium text-green-400 uppercase tracking-widest">On Duty</span>
                     </div>
                 </div>
-                <button className="relative p-2 rounded-full hover:bg-gray-200 dark:bg-white/10 transition-colors">
-                    <Bell size={20} className="text-muted" />
-                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-background"></span>
-                </button>
+
+                <div className="relative">
+                    <button
+                        onClick={() => setShowNotifications(true)}
+                        className="relative p-2 rounded-full hover:bg-gray-200 dark:bg-white/10 transition-colors"
+                    >
+                        <Bell size={20} className="text-muted" />
+                        {unreadCount > 0 && (
+                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-background animate-pulse"></span>
+                        )}
+                    </button>
+
+                    {/* Render Modal if open */}
+                    {showNotifications && (
+                        <NotificationsModal onClose={() => setShowNotifications(false)} />
+                    )}
+                </div>
             </div>
 
             {/* Staff List */}

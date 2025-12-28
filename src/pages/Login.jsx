@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, KeyRound, ArrowRight } from 'lucide-react';
 import clsx from 'clsx';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../services/firebaseConfig';
+import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
     const navigate = useNavigate();
@@ -13,6 +14,15 @@ const Login = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
+    const { currentUser } = useAuth(); // Get currentUser from context
+
+    // Redirect when user is authenticated and data is ready
+    useEffect(() => {
+        if (currentUser) {
+            navigate('/');
+        }
+    }, [currentUser, navigate]);
+
     const handleLogin = async (e) => {
         e.preventDefault();
         setIsLoading(true);
@@ -21,11 +31,10 @@ const Login = () => {
         if (method === 'email') {
             try {
                 await signInWithEmailAndPassword(auth, email, password);
-                navigate('/');
+                // Navigation is now handled by the useEffect above
             } catch (err) {
                 console.error(err);
                 setError('Failed to login. Please check your credentials.');
-            } finally {
                 setIsLoading(false);
             }
         } else {

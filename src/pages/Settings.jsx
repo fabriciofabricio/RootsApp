@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, Moon, User, LogOut, Users, Plus } from 'lucide-react';
+import { signOut } from 'firebase/auth';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import AddUserForm from '../components/AddUserForm';
 import EditUserForm from '../components/EditUserForm';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../services/firebaseConfig';
+import { db, auth } from '../services/firebaseConfig';
 
 const Settings = () => {
     const { theme, toggleTheme } = useTheme();
     const { currentUser } = useAuth();
+    const navigate = useNavigate();
     const [showAddUser, setShowAddUser] = useState(false);
 
     // Edit User State
@@ -19,6 +22,15 @@ const Settings = () => {
 
     // Initial check to avoid errors if currentUser is null (though should be handled by ProtectedRoute)
     const isAdmin = currentUser?.role === 'admin';
+
+    const handleSignOut = async () => {
+        try {
+            await signOut(auth);
+            navigate('/login');
+        } catch (error) {
+            console.error("Error signing out:", error);
+        }
+    };
 
     // Fetch Users (only if admin)
     useEffect(() => {
@@ -167,10 +179,13 @@ const Settings = () => {
                             <User size={20} className="text-muted" />
                             <span className="text-main font-medium">Edit Profile</span>
                         </div>
-                        <div className="p-4 flex items-center gap-3 cursor-pointer hover:bg-gray-100 dark:bg-white/5 text-red-400">
+                        <button
+                            onClick={handleSignOut}
+                            className="w-full p-4 flex items-center gap-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-white/5 text-red-400 transition-colors"
+                        >
                             <LogOut size={20} />
                             <span className="font-medium">Sign Out</span>
-                        </div>
+                        </button>
                     </div>
                 </section>
             </div>
