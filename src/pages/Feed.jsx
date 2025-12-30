@@ -8,6 +8,8 @@ import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestor
 import { db } from '../services/firebaseConfig';
 import { useAuth } from '../context/AuthContext';
 import { Loader2 } from 'lucide-react';
+import { useDemo } from '../context/DemoContext';
+import { MOCK_POSTS, MOCK_USERS } from '../services/mockData';
 
 const Feed = () => {
     const { currentUser } = useAuth();
@@ -15,9 +17,22 @@ const Feed = () => {
     const [loading, setLoading] = useState(true);
     const [usersMap, setUsersMap] = useState({});
 
+    const { isDemoMode } = useDemo();
+
     useEffect(() => {
         if (!currentUser?.workspaceId) {
             setLoading(false);
+            return;
+        }
+
+        if (isDemoMode) {
+            setLoading(true);
+            // Simulate network delay
+            setTimeout(() => {
+                setPosts(MOCK_POSTS);
+                setUsersMap(MOCK_USERS);
+                setLoading(false);
+            }, 800);
             return;
         }
 
@@ -61,7 +76,7 @@ const Feed = () => {
             unsubscribePosts();
             unsubscribeUsers();
         };
-    }, [currentUser]);
+    }, [currentUser, isDemoMode]);
 
     const [selectedPost, setSelectedPost] = useState(null);
     const [openedByCommentClick, setOpenedByCommentClick] = useState(false);

@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { BedDouble, CheckSquare, ClipboardList, ArrowRight, MessageSquare } from 'lucide-react';
+import { BedDouble, CheckSquare, ClipboardList, ArrowRight, MessageSquare, ArrowLeft, User, LogIn } from 'lucide-react';
 import clsx from 'clsx';
 
 const CleaningList = () => {
     // Data derived from the user's spreadsheet image
+    const [selectedRoom, setSelectedRoom] = useState(null);
+
     const ROOMS = [
         { id: 5, type: 'P', status: 'clean', co: 1, so: 0, checkIn: 'Rodney', tasks: ['clean room', 'vacuum', 'trash'] },
         { id: 6, type: 'P', status: 'check', co: 0, so: 0, checkIn: null, justCheck: true, tasks: ['vacuum', 'trash'] },
@@ -27,13 +29,113 @@ const CleaningList = () => {
     // "Just Check" column is ignored, so we rely on co, so, checkIn, or tasks
     const activeRooms = ROOMS.filter(r => r.co > 0 || r.so > 0 || r.checkIn || r.tasks.length > 0);
 
+
+    const RoomChecklist = ({ room, onBack }) => {
+        const [checklist, setChecklist] = useState([
+            { id: 'sweep', label: 'Sweep Floor', done: false },
+            { id: 'dust', label: 'Dust Surfaces', done: false },
+            { id: 'bed', label: 'Make Bed', done: false },
+            { id: 'bathroom', label: 'Clean Bathroom', done: false },
+            { id: 'trash', label: 'Empty Trash', done: false },
+            { id: 'windows', label: 'Open Windows', done: false },
+            { id: 'mop', label: 'Mop Floor', done: false },
+            { id: 'towels', label: 'Change Towels', done: false },
+        ]);
+
+        const toggleTask = (id) => {
+            setChecklist(checklist.map(item =>
+                item.id === id ? { ...item, done: !item.done } : item
+            ));
+        };
+
+        const progress = Math.round((checklist.filter(t => t.done).length / checklist.length) * 100);
+
+        return (
+            <div className="space-y-6 animate-in slide-in-from-right duration-300">
+                <div className="flex items-center gap-4 mb-6">
+                    <button
+                        onClick={onBack}
+                        className="p-2 rounded-full bg-surface border border-white/10 hover:bg-white/10 transition-colors text-main"
+                    >
+                        <ArrowLeft size={20} />
+                    </button>
+                    <div>
+                        <h2 className="text-xl font-bold text-main">Room #{room.id}</h2>
+                        <div className="flex gap-4 text-sm mt-1">
+                            <span className="flex items-center gap-1.5 text-blue-400 font-medium bg-blue-400/10 px-2 py-0.5 rounded">
+                                <User size={14} />
+                                {room.so} Stay Overs
+                            </span>
+                            <span className="flex items-center gap-1.5 text-green-400 font-medium bg-green-400/10 px-2 py-0.5 rounded">
+                                <LogIn size={14} />
+                                {room.checkIn ? 1 : 0} Check-ins
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="bg-surface p-4 rounded-xl border border-white/5 mb-6">
+                    <div className="flex justify-between text-sm mb-2">
+                        <span className="text-muted">Progress</span>
+
+                        <span className="text-primary font-bold">{progress}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-primary transition-all duration-500"
+                            style={{ width: `${progress}%` }}
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    {checklist.map(task => (
+                        <div
+                            key={task.id}
+                            onClick={() => toggleTask(task.id)}
+                            className={clsx(
+                                "flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer",
+                                task.done
+                                    ? "bg-green-500/10 border-green-500/20"
+                                    : "bg-surface border-white/5 hover:bg-white/5"
+                            )}
+                        >
+                            <div className={clsx(
+                                "w-6 h-6 rounded border flex items-center justify-center transition-colors shrink-0",
+                                task.done ? "bg-green-500 border-green-500 text-background" : "border-gray-500"
+                            )}>
+                                {task.done && <CheckSquare size={16} />}
+                            </div>
+                            <span className={clsx(
+                                "font-medium select-none",
+                                task.done ? "text-muted line-through" : "text-main"
+                            )}>
+                                {task.label}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
+
+    if (selectedRoom) {
+        return <RoomChecklist room={selectedRoom} onBack={() => setSelectedRoom(null)} />;
+    }
+
     return (
         <div className="space-y-6">
             <div>
                 <h2 className="text-xl font-bold text-main mb-4 ml-1">Daily Housekeeping</h2>
                 <div className="grid gap-3">
                     {activeRooms.map(room => (
-                        <div key={room.id} className="bg-surface p-4 rounded-xl border border-white/5 relative overflow-hidden">
+                        <div
+                            key={room.id}
+                            onClick={() => setSelectedRoom(room)}
+                            className="bg-surface p-4 rounded-xl border border-white/5 relative overflow-hidden cursor-pointer hover:border-white/20 transition-all"
+                        >
                             {/* Status Indicator Bar */}
 
                             <div className={clsx(

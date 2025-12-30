@@ -1,5 +1,7 @@
 import { MapPin, Calendar, Users, Bike, ExternalLink, ArrowRight } from 'lucide-react';
 import clsx from 'clsx';
+import { useDemo } from '../context/DemoContext';
+import { MOCK_EVENTS } from '../services/mockData';
 
 const EVENTS = [
     {
@@ -9,7 +11,12 @@ const EVENTS = [
         location: 'Vondelpark',
         dist: '2.5 km',
         image: 'https://images.unsplash.com/photo-1533174072545-e8d4aa97edf9?auto=format&fit=crop&w=600&q=80',
-        attendees: [1, 2, 3, 4],
+        attendees: [
+            { id: 1, avatar: 'https://ui-avatars.com/api/?name=John+D&background=random' },
+            { id: 2, avatar: 'https://ui-avatars.com/api/?name=Jane+S&background=random' },
+            { id: 3, avatar: 'https://ui-avatars.com/api/?name=Bob+M&background=random' },
+            { id: 4, avatar: 'https://ui-avatars.com/api/?name=Alice+Wonder&background=random' }
+        ],
         ride: { available: true, driver: 'Mike', seats: 2 }
     },
     {
@@ -19,7 +26,10 @@ const EVENTS = [
         location: 'Shelter Club',
         dist: '4.1 km',
         image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=600&q=80',
-        attendees: [1, 2],
+        attendees: [
+            { id: 1, avatar: 'https://ui-avatars.com/api/?name=Rave+King&background=random' },
+            { id: 2, avatar: 'https://ui-avatars.com/api/?name=Techno+Queen&background=random' }
+        ],
         ride: null
     },
     {
@@ -29,7 +39,11 @@ const EVENTS = [
         location: 'De Hallen',
         dist: '1.2 km',
         image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80',
-        attendees: [1, 2, 3],
+        attendees: [
+            { id: 1, avatar: 'https://ui-avatars.com/api/?name=Foodie+One&background=random' },
+            { id: 2, avatar: 'https://ui-avatars.com/api/?name=Chef+Boy&background=random' },
+            { id: 3, avatar: 'https://ui-avatars.com/api/?name=Hungry+Gal&background=random' }
+        ],
         ride: { available: true, driver: 'Anna', seats: 1 }
     }
 ];
@@ -45,7 +59,7 @@ const EventCard = ({ event }) => (
             {event.ride && (
                 <div className="absolute bottom-2 left-2 bg-green-500 text-background px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shadow-lg">
                     <Bike size={14} />
-                    Ride w/ {event.ride.driver} ({event.ride.seats} left)
+                    {event.ride.bikeTime ? `${event.ride.bikeTime} min bike ride` : `${event.ride.seats} seats left`}
                 </div>
             )}
         </div>
@@ -64,8 +78,15 @@ const EventCard = ({ event }) => (
 
             <div className="flex items-center justify-between mt-4">
                 <div className="flex -space-x-2">
-                    {event.attendees.map(i => (
-                        <div key={i} className="w-6 h-6 rounded-full bg-gray-600 border border-surface" />
+                    {event.attendees.map((attendee, index) => (
+                        <div key={index} className="w-6 h-6 rounded-full border border-surface overflow-hidden">
+                            <img
+                                src={attendee.avatar}
+                                alt="Attendee"
+                                className="w-full h-full object-cover"
+                                onError={(e) => { e.target.style.display = 'none'; }}
+                            />
+                        </div>
                     ))}
                     <div className="w-6 h-6 rounded-full bg-gray-800 border border-surface flex items-center justify-center text-[8px] text-muted">+2</div>
                 </div>
@@ -79,6 +100,9 @@ const EventCard = ({ event }) => (
 );
 
 const CityExplorer = () => {
+    const { isDemoMode } = useDemo();
+    const eventsList = isDemoMode ? MOCK_EVENTS : EVENTS;
+
     return (
         <div className="pb-20 md:pb-0 max-w-lg mx-auto">
             <h1 className="text-3xl font-bold text-main mb-2">City Explorer</h1>
@@ -98,7 +122,7 @@ const CityExplorer = () => {
 
             <h2 className="text-lg font-bold text-main mb-4">Upcoming Events</h2>
             <div>
-                {EVENTS.map(event => (
+                {eventsList.map(event => (
                     <EventCard key={event.id} event={event} />
                 ))}
             </div>

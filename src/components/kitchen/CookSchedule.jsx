@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChefHat, ChevronLeft, ChevronRight, User } from 'lucide-react';
 import clsx from 'clsx';
+import { useAuth } from '../../context/AuthContext';
 
 // Mock Data (Consistent with other parts of the app)
 const VOLUNTEERS = [
@@ -15,6 +16,7 @@ const VOLUNTEERS = [
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const CookSchedule = () => {
+    const { currentUser } = useAuth();
     // State for weekly assignments: { "Mon": volunteerId, ... }
     const [assignments, setAssignments] = useState({
         'Mon': 1,
@@ -23,16 +25,38 @@ const CookSchedule = () => {
         'Sun': 2
     });
 
-    const [isEditing, setIsEditing] = useState(null); // Day currently being edited
+    const getVolunteer = (id) => {
+        // If the ID matches the current user's UID (string), return their profile
+        if (currentUser && id === currentUser.uid) {
+            return {
+                id: currentUser.uid,
+                name: currentUser.displayName || 'You',
+                avatar: currentUser.photoURL || `https://ui-avatars.com/api/?name=${currentUser.displayName || 'Me'}&background=random&color=fff`
+            };
+        }
+        // Otherwise look up in mock volunteers (numbers)
+        return VOLUNTEERS.find(v => v.id === id);
+    };
 
-    const getVolunteer = (id) => VOLUNTEERS.find(v => v.id === id);
+    const handleToggleDay = (day) => {
+        if (!currentUser) return; // Guard clause if not logged in
 
-    const handleAssign = (day, volunteerId) => {
-        setAssignments(prev => ({
-            ...prev,
-            [day]: volunteerId
-        }));
-        setIsEditing(null);
+        setAssignments(prev => {
+            const currentAssignee = prev[day];
+
+            // If current user is already assigned, remove them
+            if (currentAssignee === currentUser.uid) {
+                const newAssignments = { ...prev };
+                delete newAssignments[day];
+                return newAssignments;
+            }
+
+            // Otherwise, assign current user (overwriting anyone else)
+            return {
+                ...prev,
+                [day]: currentUser.uid
+            };
+        });
     };
 
     return (
@@ -43,7 +67,7 @@ const CookSchedule = () => {
                         <ChefHat className="text-primary" size={24} />
                         Cook Schedule
                     </h2>
-                    <p className="text-sm text-muted">Weekly meal preparation roster</p>
+                    <p className="text-sm text-muted">Tap a day to sign up for meal prep</p>
                 </div>
             </div>
 
@@ -51,18 +75,23 @@ const CookSchedule = () => {
                 {DAYS.map((day, index) => {
                     const assignedId = assignments[day];
                     const cook = assignedId ? getVolunteer(assignedId) : null;
-                    const isToday = new Date().getDay() === (index + 1) % 7; // Simple Mon-Sun mapping check (Sunday is 0 in JS)
+                    const isToday = new Date().getDay() === (index + 1) % 7;
+                    const isMe = currentUser && assignedId === currentUser.uid;
 
                     return (
-                        <div
+                        <button
                             key={day}
+                            onClick={() => handleToggleDay(day)}
                             className={clsx(
-                                "flex flex-col gap-3 p-3 rounded-xl border transition-all relative group",
-                                isToday ? "bg-primary/5 border-primary/30" : "bg-background border-white/5",
-                                isEditing === day && "ring-2 ring-primary border-transparent"
+                                "flex flex-col gap-3 p-3 rounded-xl border transition-all relative group text-left",
+                                isMe
+                                    ? "bg-primary/10 border-primary/50"
+                                    : isToday
+                                        ? "bg-primary/5 border-primary/30"
+                                        : "bg-background border-white/5 hover:border-white/10"
                             )}
                         >
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between w-full">
                                 <span className={clsx("text-sm font-bold", isToday ? "text-primary" : "text-muted")}>
                                     {day}
                                 </span>
@@ -70,57 +99,36 @@ const CookSchedule = () => {
                             </div>
 
                             {/* Cook Display */}
-                            <div className="flex-1 flex flex-col items-center justify-center min-h-[80px] text-center">
-                                {isEditing === day ? (
-                                    <div className="absolute inset-0 bg-surface z-10 p-2 rounded-xl border border-white/10 flex flex-col gap-2 overflow-y-auto custom-scrollbar max-h-[200px] shadow-xl">
-                                        <p className="text-xs text-muted font-medium sticky top-0 bg-surface pb-1">Select Cook:</p>
-                                        {VOLUNTEERS.map(v => (
-                                            <button
-                                                key={v.id}
-                                                onClick={() => handleAssign(day, v.id)}
-                                                className="flex items-center gap-2 p-1.5 hover:bg-gray-100 dark:bg-white/5 rounded-lg text-left"
-                                            >
-                                                <img src={v.avatar} alt={v.name} className="w-6 h-6 rounded-full" />
-                                                <span className="text-xs text-main truncate">{v.name}</span>
-                                            </button>
-                                        ))}
-                                        <button
-                                            onClick={() => handleAssign(day, null)}
-                                            className="text-xs text-red-400 p-1 hover:bg-gray-100 dark:bg-white/5 rounded text-center mt-1"
-                                        >
-                                            Clear
-                                        </button>
-                                    </div>
-                                ) : (
+                            <div className="flex-1 flex flex-col items-center justify-center min-h-[80px] text-center w-full">
+                                {cook ? (
                                     <>
-                                        {cook ? (
-                                            <>
-                                                <div className="relative mb-2">
-                                                    <img src={cook.avatar} alt={cook.name} className="w-10 h-10 rounded-full border-2 border-surface shadow-md" />
-                                                    <div className="absolute -bottom-1 -right-1 bg-surface rounded-full p-0.5">
-                                                        <ChefHat size={12} className="text-orange-400" />
-                                                    </div>
-                                                </div>
-                                                <p className="text-xs font-medium text-main line-clamp-1">{cook.name}</p>
-                                            </>
-                                        ) : (
-                                            <div className="flex flex-col items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
-                                                <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center border border-dashed border-white/20">
-                                                    <User size={16} />
-                                                </div>
-                                                <p className="text-xs text-gray-500">No Cook</p>
+                                        <div className="relative mb-2">
+                                            <img
+                                                src={cook.avatar}
+                                                alt={cook.name}
+                                                className={clsx(
+                                                    "w-10 h-10 rounded-full border-2 shadow-md",
+                                                    isMe ? "border-primary" : "border-surface"
+                                                )}
+                                            />
+                                            <div className="absolute -bottom-1 -right-1 bg-surface rounded-full p-0.5">
+                                                <ChefHat size={12} className={isMe ? "text-primary" : "text-orange-400"} />
                                             </div>
-                                        )}
-
-                                        <button
-                                            onClick={() => setIsEditing(day)}
-                                            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            aria-label="Edit cook"
-                                        />
+                                        </div>
+                                        <p className={clsx("text-xs font-medium line-clamp-1", isMe ? "text-primary" : "text-main")}>
+                                            {cook.name}
+                                        </p>
                                     </>
+                                ) : (
+                                    <div className="flex flex-col items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                                        <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center border border-dashed border-white/20">
+                                            <User size={16} />
+                                        </div>
+                                        <p className="text-xs text-gray-500">Available</p>
+                                    </div>
                                 )}
                             </div>
-                        </div>
+                        </button>
                     );
                 })}
             </div>

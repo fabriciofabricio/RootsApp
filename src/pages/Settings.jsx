@@ -4,6 +4,7 @@ import { Bell, Moon, User, LogOut, Users, Plus } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { useDemo } from '../context/DemoContext';
 import AddUserForm from '../components/AddUserForm';
 import EditUserForm from '../components/EditUserForm';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -11,6 +12,7 @@ import { db, auth } from '../services/firebaseConfig';
 
 const Settings = () => {
     const { theme, toggleTheme } = useTheme();
+    const { isDemoMode, toggleDemoMode } = useDemo();
     const { currentUser } = useAuth();
     const navigate = useNavigate();
     const [showAddUser, setShowAddUser] = useState(false);
@@ -167,6 +169,18 @@ const Settings = () => {
                                 className={`w-10 h-6 rounded-full relative transition-colors duration-300 ${theme === 'dark' ? 'bg-primary' : 'bg-gray-600'}`}
                             >
                                 <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${theme === 'dark' ? 'left-[calc(100%-1.25rem)]' : 'left-1'}`}></div>
+                            </button>
+                        </div>
+                        <div className="p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <Users size={20} className="text-muted" />
+                                <span className="text-main font-medium">Template Mode</span>
+                            </div>
+                            <button
+                                onClick={toggleDemoMode}
+                                className={`w-10 h-6 rounded-full relative transition-colors duration-300 ${isDemoMode ? 'bg-primary' : 'bg-gray-600'}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 ${isDemoMode ? 'left-[calc(100%-1.25rem)]' : 'left-1'}`}></div>
                             </button>
                         </div>
                     </div>

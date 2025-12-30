@@ -4,9 +4,11 @@ import clsx from 'clsx';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebaseConfig';
 import { useAuth } from '../../context/AuthContext';
+import { useDemo } from '../../context/DemoContext';
+import { MOCK_STAFF } from '../../services/mockData';
 import NotificationsModal from './NotificationsModal';
 
-const staffMembers = [
+const DEFAULT_STAFF = [
     { id: 1, name: 'Ana Silva', role: 'front office', avatar: 'https://ui-avatars.com/api/?name=Ana+Silva&background=3B82F6&color=fff' },
     { id: 2, name: 'João Santos', role: 'bar', avatar: 'https://ui-avatars.com/api/?name=Joao+Santos&background=A855F7&color=fff' },
     { id: 3, name: 'Maria Costa', role: 'cleaning', avatar: 'https://ui-avatars.com/api/?name=Maria+Costa&background=06B6D4&color=fff' },
@@ -20,12 +22,16 @@ const roleColors = {
     'cleaning': 'border-cyan-500 text-cyan-400',
     'breakfast': 'border-orange-500 text-orange-400',
     'intern': 'border-green-500 text-green-400',
+    'volunteer': 'border-yellow-500 text-yellow-400', // Added for demo
 };
 
 const FeedHeader = () => {
     const { currentUser } = useAuth();
+    const { isDemoMode } = useDemo();
     const [showNotifications, setShowNotifications] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+
+    const staffMembers = isDemoMode ? MOCK_STAFF : DEFAULT_STAFF;
 
     // Listen for unread notifications
     useEffect(() => {

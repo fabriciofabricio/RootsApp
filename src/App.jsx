@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { DemoProvider } from './context/DemoContext';
 import Layout from './layout/Layout';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -55,33 +56,35 @@ function App() {
     <ThemeProvider>
       <UpdateChecker />
       <AuthProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/onboarding" element={<Onboarding />} />
+        <DemoProvider>
+          <Router>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/onboarding" element={<Onboarding />} />
 
-            <Route path="/" element={
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            }>
-              <Route index element={<Feed />} />
-              <Route path="feed" element={<Feed />} />
-              <Route path="moments" element={<Moments />} />
-              <Route path="kitchen" element={<Kitchen />} />
-              <Route path="operations" element={<Operations />} />
-              <Route path="schedules" element={<Schedules />} />
-              <Route path="city" element={<CityExplorer />} />
-              <Route path="wiki" element={<Wiki />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="volunteers" element={<VolunteerCalendar />} />
-              <Route path="location" element={<Location />} />
-              <Route path="shopping" element={<Shopping />} />
-            </Route>
-          </Routes>
-        </Router>
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Feed />} />
+                <Route path="feed" element={<Feed />} />
+                <Route path="moments" element={<Moments />} />
+                <Route path="kitchen" element={<Kitchen />} />
+                <Route path="operations" element={<Operations />} />
+                <Route path="schedules" element={<Schedules />} />
+                <Route path="city" element={<CityExplorer />} />
+                <Route path="wiki" element={<Wiki />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="volunteers" element={<VolunteerCalendar />} />
+                <Route path="location" element={<Location />} />
+                <Route path="shopping" element={<Shopping />} />
+              </Route>
+            </Routes>
+          </Router>
+        </DemoProvider>
       </AuthProvider>
     </ThemeProvider>
   );

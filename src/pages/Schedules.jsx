@@ -56,6 +56,9 @@ const generateStaffSchedule = () => {
     });
 };
 
+import { useDemo } from '../context/DemoContext';
+import { MOCK_SCHEDULE_DATA } from '../services/mockData';
+
 const SCHEDULE_DATA = generateStaffSchedule();
 
 const RoleBadge = ({ role, time, minimal = false }) => {
@@ -86,7 +89,11 @@ const RoleBadge = ({ role, time, minimal = false }) => {
 };
 
 const Schedules = () => {
+    const { isDemoMode } = useDemo();
     const [currentWeek, setCurrentWeek] = useState('Oct 23 - Oct 29');
+
+    // Use mock data in demo mode, otherwise use the generated schedule
+    const displayData = isDemoMode ? MOCK_SCHEDULE_DATA : SCHEDULE_DATA;
 
     return (
         <div className="pb-20 md:pb-0 mx-auto space-y-6 max-w-7xl">
@@ -130,12 +137,16 @@ const Schedules = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                            {SCHEDULE_DATA.map((staff) => (
+                            {displayData.map((staff) => (
                                 <tr key={staff.id} className="group transition-colors odd:bg-transparent even:bg-white/[0.02] hover:bg-gray-100 dark:bg-white/5">
                                     {/* Sticky Staff Column */}
                                     <td className="p-4 bg-surface group-hover:bg-gray-50 dark:group-hover:bg-[#1a1c23] transition-colors sticky left-0 z-20 border-r border-gray-200 dark:border-white/10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)] w-48 max-w-48">
                                         <div className="flex items-center gap-3">
-                                            <img src={staff.avatar} alt={staff.name} className="w-10 h-10 rounded-full shrink-0" />
+                                            {staff.photoURL || staff.avatar ? (
+                                                <img src={staff.photoURL || staff.avatar} alt={staff.name} className="w-10 h-10 rounded-full shrink-0" />
+                                            ) : (
+                                                <img src={`https://ui-avatars.com/api/?name=${staff.name}&background=random`} alt={staff.name} className="w-10 h-10 rounded-full shrink-0" />
+                                            )}
                                             <div className="min-w-0 overflow-hidden">
                                                 <p className="font-bold text-main text-sm truncate" title={staff.name}>{staff.name}</p>
                                                 <p className="text-xs text-gray-500 truncate">
@@ -166,7 +177,7 @@ const Schedules = () => {
 
             {/* Mobile List View */}
             <div className="md:hidden space-y-4">
-                {SCHEDULE_DATA.map((staff) => (
+                {displayData.map((staff) => (
                     <div key={staff.id} className="bg-surface rounded-xl border border-white/5 p-4 space-y-4">
                         <div className="flex items-center gap-3 border-b border-white/5 pb-3">
                             <img src={staff.avatar} alt={staff.name} className="w-10 h-10 rounded-full" />

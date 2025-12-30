@@ -5,6 +5,10 @@ import { MapPin, Navigation, User, MessageCircle } from 'lucide-react';
 import L from 'leaflet';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { db } from '../services/firebaseConfig';
+import { AlertTriangle } from 'lucide-react';
 
 // Create a custom helper to generate marker icons
 const createAvatarIcon = (url) => {
@@ -48,8 +52,12 @@ const Location = () => {
     const [position, setPosition] = useState([52.3676, 4.9041]); // Default to Amsterdam
     const [volunteers, setVolunteers] = useState(MOCK_VOLUNTEERS);
     const [isSharing, setIsSharing] = useState(false);
+    const [showEmergencyModal, setShowEmergencyModal] = useState(false);
     const { theme } = useTheme();
+
+    const { currentUser } = useAuth();
     const navigate = useNavigate();
+
 
     useEffect(() => {
         // In a real app, we would get the user's current location here
@@ -66,6 +74,36 @@ const Location = () => {
     const handleMessage = (id) => {
         console.log(`Open chat with user ${id}`);
     };
+
+    const handleEmergencyClick = () => {
+        setShowEmergencyModal(true);
+    };
+
+    const confirmEmergency = async () => {
+        if (!currentUser) return;
+        setShowEmergencyModal(false);
+
+        // Visual only for now
+        // try {
+        //     await addDoc(collection(db, "posts"), {
+        //         content: `🚨 **EMERGENCY ALERT** 🚨\n\nI need help! My current location is:\nLatitude: ${position[0]}\nLongitude: ${position[1]}\n\nPlease send help immediately.`,
+        //         authorId: currentUser.uid,
+        //         authorName: currentUser.name || currentUser.displayName || "Unknown User",
+        //         authorPhoto: currentUser.photoURL || null,
+        //         createdAt: serverTimestamp(),
+        //         workspaceId: currentUser.workspaceId,
+        //         type: 'emergency',
+        //         taggedRoles: ['volunteer', 'staff', 'manager', 'admin'],
+        //         location: { lat: position[0], lng: position[1] }
+        //     });
+        //     alert("Emergency Alert Sent! Help is on the way.");
+        // } catch (error) {
+        //     console.error("Error sending emergency alert:", error);
+        //     alert("Failed to send alert. Please call emergency services directly.");
+        // }
+    };
+
+
 
     return (
         <div className="h-[calc(100vh-80px)] md:h-screen w-full relative bg-gray-100 dark:bg-gray-900">
@@ -125,6 +163,15 @@ const Location = () => {
             {/* Floating Controls */}
             <div className="absolute bottom-24 md:bottom-8 right-4 flex flex-col gap-3 z-[1000]">
                 <button
+                    onClick={handleEmergencyClick}
+                    className="p-4 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center border-4 border-yellow-500 bg-yellow-400 text-black hover:bg-yellow-500 hover:scale-110 mb-4"
+                    title="EMERGENCY ALERT"
+                >
+                    <AlertTriangle size={32} strokeWidth={3} />
+                </button>
+
+
+                <button
                     onClick={toggleSharing}
                     className={`p-4 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center border border-white/10 ${isSharing
                         ? 'bg-green-500 text-main animate-pulse shadow-green-500/20'
@@ -166,6 +213,37 @@ const Location = () => {
                 </div>
             </div>
 
+            {/* Emergency Confirmation Modal */}
+            {showEmergencyModal && (
+                <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+                        <div className="bg-yellow-500/10 p-6 flex flex-col items-center text-center border-b border-white/5">
+                            <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mb-4 text-yellow-500">
+                                <AlertTriangle size={32} />
+                            </div>
+                            <h3 className="text-xl font-bold text-main mb-2">Emergency Alert</h3>
+                            <p className="text-muted text-sm">
+                                This will share your live location with <strong>ALL users</strong> and notify them that you need help immediately.
+                            </p>
+                        </div>
+                        <div className="p-4 flex gap-3">
+                            <button
+                                onClick={() => setShowEmergencyModal(false)}
+                                className="flex-1 py-3 rounded-xl font-medium text-main hover:bg-white/5 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmEmergency}
+                                className="flex-1 py-3 bg-yellow-400 hover:bg-yellow-500 text-black rounded-xl font-bold transition-colors shadow-lg shadow-yellow-500/20"
+                            >
+                                SEND ALERT
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <style>
                 {`
                 .leaflet-popup-content-wrapper {
@@ -182,6 +260,7 @@ const Location = () => {
         </div>
     );
 };
+
 
 export default Location;
 
