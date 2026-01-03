@@ -44,3 +44,25 @@ export const uploadPostImage = async (file, userId) => {
         throw error;
     }
 };
+
+/**
+ * Uploads a moment image to Firebase Storage.
+ *
+ * @param {File} file - The file to upload.
+ * @param {string} userId - The ID of the user uploading the photo.
+ * @returns {Promise<string>} - The download URL of the uploaded photo.
+ */
+export const uploadMomentImage = async (file, userId) => {
+    try {
+        const timestamp = Date.now();
+        const fileRef = ref(storage, `moments/${userId}/${timestamp}_${file.name}`);
+
+        await uploadBytes(fileRef, file);
+        const photoURL = await getDownloadURL(fileRef);
+
+        return photoURL;
+    } catch (error) {
+        console.error("Error uploading moment image:", error);
+        throw error;
+    }
+};

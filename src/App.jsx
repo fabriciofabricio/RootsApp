@@ -16,6 +16,7 @@ import Wiki from './pages/Wiki';
 import Settings from './pages/Settings';
 
 import Profile from './pages/Profile';
+import Calendar from './pages/Calendar';
 import VolunteerCalendar from './pages/VolunteerCalendar';
 import Location from './pages/Location';
 import Shopping from './pages/Shopping';
@@ -79,6 +80,7 @@ function App() {
                 <Route path="settings" element={<Settings />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="volunteers" element={<VolunteerCalendar />} />
+                <Route path="calendar" element={<Calendar />} />
                 <Route path="location" element={<Location />} />
                 <Route path="shopping" element={<Shopping />} />
               </Route>

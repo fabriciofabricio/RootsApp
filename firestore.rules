@@ -60,6 +60,20 @@ service cloud.firestore {
       }
     }
 
+    // Moments Collection
+    match /moments/{momentId} {
+      // Allow read if user is in the same workspace (or just authenticated for now if workspace is optional)
+      allow read: if request.auth != null; 
+      
+      // Allow create if user is authenticated
+      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+
+      // Allow delete if author or admin
+      allow delete: if request.auth != null && (
+        resource.data.authorId == request.auth.uid || isAdmin()
+      );
+    }
+
     // Default: Deny everything else
     match /{document=**} {
       allow read, write: if false;
