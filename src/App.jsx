@@ -52,7 +52,20 @@ function UpdateChecker() {
   return null;
 }
 
+import { setupForegroundMessageListener } from './services/notificationService';
+
+// ... imports
+
 function App() {
+
+  useEffect(() => {
+    // Setup listener for foreground messages
+    setupForegroundMessageListener((payload) => {
+      console.log("Foreground notification received:", payload);
+      // We could also show a toast here if needed
+    });
+  }, []);
+
   return (
     <ThemeProvider>
       <UpdateChecker />

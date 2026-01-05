@@ -37,6 +37,9 @@ const NewMomentModal = ({ onClose }) => {
             const imageUrl = await uploadMomentImage(image, currentUser.uid);
 
             // 2. Create Firestore Document
+            const now = new Date();
+            const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
             await addDoc(collection(db, 'moments'), {
                 imageUrl,
                 tag: selectedCategory,
@@ -45,7 +48,8 @@ const NewMomentModal = ({ onClose }) => {
                 authorName: currentUser.displayName || currentUser.email.split('@')[0],
                 authorPhoto: currentUser.photoURL || null,
                 likes: 0,
-                workspaceId: currentUser.workspaceId || null
+                workspaceId: currentUser.workspaceId || null,
+                month_year: monthYear
             });
 
             onClose();

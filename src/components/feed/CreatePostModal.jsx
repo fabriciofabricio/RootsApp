@@ -151,6 +151,9 @@ const CreatePostModal = ({ isOpen, onClose }) => {
             }
 
             // Create Post in Firestore with tags
+            const now = new Date();
+            const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
             await addDoc(collection(db, "posts"), {
                 content: message,
                 image: imageUrl,
@@ -164,7 +167,8 @@ const CreatePostModal = ({ isOpen, onClose }) => {
                 type: 'user',
                 // New tag fields
                 taggedRoles: taggedRoles,
-                taggedUsers: taggedUsers
+                taggedUsers: taggedUsers,
+                month_year: monthYear
             });
 
             setMessage('');
