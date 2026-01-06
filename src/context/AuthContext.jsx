@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth, db } from "../services/firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import {
     registerForPushNotifications,
     setupForegroundMessageListener,
@@ -21,35 +21,46 @@ export function AuthProvider({ children }) {
     const [notificationStatus, setNotificationStatus] = useState('unknown'); // 'unknown' | 'granted' | 'denied' | 'unsupported'
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        let userUnsubscribe;
+
+        const authUnsubscribe = onAuthStateChanged(auth, (user) => {
+            // Clean up previous user listener if exists
+            if (userUnsubscribe) {
+                userUnsubscribe();
+                userUnsubscribe = null;
+            }
+
             if (user) {
-                // User is signed in, fetch additional data from Firestore
-                try {
-                    const userDocRef = doc(db, "users", user.uid);
-                    const userDoc = await getDoc(userDocRef);
-
-                    if (userDoc.exists()) {
-                        const userData = { ...user, ...userDoc.data() };
+                // Subscribe to real-time user updates
+                const userDocRef = doc(db, "users", user.uid);
+                userUnsubscribe = onSnapshot(userDocRef, (docSnapshot) => {
+                    if (docSnapshot.exists()) {
+                        const userData = { ...user, ...docSnapshot.data() };
                         setCurrentUser(userData);
-
-                        // Setup push notifications after user data is loaded
-                        setupNotifications(user.uid);
                     } else {
                         // Fallback if no firestore doc yet
                         setCurrentUser(user);
                     }
-                } catch (error) {
+                    setLoading(false);
+
+                    // Setup push notifications after user data is loaded
+                    setupNotifications(user.uid);
+                }, (error) => {
                     console.error("Error fetching user data:", error);
                     setCurrentUser(user);
-                }
+                    setLoading(false);
+                });
             } else {
                 setCurrentUser(null);
                 setNotificationStatus('unknown');
+                setLoading(false);
             }
-            setLoading(false);
         });
 
-        return unsubscribe;
+        return () => {
+            authUnsubscribe();
+            if (userUnsubscribe) userUnsubscribe();
+        };
     }, []);
 
     // Setup push notifications

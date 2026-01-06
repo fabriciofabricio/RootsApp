@@ -1,6 +1,6 @@
 import { initializeApp, getApp, deleteApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, updateDoc, arrayUnion, Timestamp } from "firebase/firestore";
 import { db } from "./firebaseConfig";
 
 // Re-use the config from your main config file or duplicate it here if not exported
@@ -68,4 +68,30 @@ export const createSecondaryUser = async (email, password, role, name, adminUser
             await deleteApp(secondaryApp);
         }
     }
+};
+
+/**
+ * Updates a user's name and records the previous name in history.
+ * 
+ * @param {string} userId - The ID of the user to update
+ * @param {string} newName - The new name to set
+ * @param {string} oldName - The current name (to be moved to history)
+ */
+export const updateUserName = async (userId, newName, oldName) => {
+    if (!userId || !newName) return;
+
+    const userRef = doc(db, "users", userId);
+
+    const updateData = {
+        name: newName
+    };
+
+    if (oldName) {
+        updateData.nameHistory = arrayUnion({
+            name: oldName,
+            changedAt: Timestamp.now()
+        });
+    }
+
+    await updateDoc(userRef, updateData);
 };

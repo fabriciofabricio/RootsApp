@@ -40,7 +40,18 @@ const navItems = [
     { icon: Book, label: 'Wiki', path: '/wiki' },
 ];
 
+import { useAuth } from '../context/AuthContext';
+
 const Sidebar = ({ isOpen, toggleSidebar, isCollapsed, toggleCollapse }) => {
+    const { currentUser } = useAuth();
+
+    const filteredNavItems = navItems.filter(item => {
+        if (currentUser?.role === 'volunteer') {
+            return !['Calendar', 'Shopping', 'Volunteers'].includes(item.label);
+        }
+        return true;
+    });
+
     const handleLinkClick = () => {
         if (window.innerWidth < 768) {
             toggleSidebar();
@@ -78,7 +89,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isCollapsed, toggleCollapse }) => {
                     </div>
 
                     <nav className="flex-1 px-3 space-y-2 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                        {navItems.map((item) => (
+                        {filteredNavItems.map((item) => (
                             <NavLink
                                 key={item.path}
                                 to={item.path}

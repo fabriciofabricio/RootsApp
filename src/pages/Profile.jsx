@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Calendar as CalendarIcon, Clock, Award, Medal, Trophy, MapPin, Mail } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Award, Medal, Trophy, MapPin, Mail, Edit2 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../context/AuthContext';
 import { uploadProfilePhoto } from '../services/storageService';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebaseConfig';
+import EditProfileNameModal from '../components/EditProfileNameModal';
 
 const StatsCard = ({ label, value, sublabel, icon: Icon, color }) => (
     <div className="bg-surface p-4 rounded-xl border border-white/5 flex items-center gap-4">
@@ -36,9 +37,11 @@ const Badge = ({ icon: Icon, label, locked }) => (
 const Profile = () => {
     const { currentUser } = useAuth();
     const [uploading, setUploading] = useState(false);
+    const [isEditingName, setIsEditingName] = useState(false);
 
     // Use local state for immediate feedback, fallback to currentUser data
     const [photoURL, setPhotoURL] = useState(currentUser?.photoURL || "https://ui-avatars.com/api/?name=User&background=random");
+    const [displayName, setDisplayName] = useState(currentUser?.name || currentUser?.email || 'Volunteer User');
 
     const handlePhotoUpload = async (e) => {
         const file = e.target.files[0];
@@ -101,10 +104,16 @@ const Profile = () => {
                 </div>
 
                 <div className="flex-1 space-y-2">
-                    <div>
-                        <h1 className="text-2xl font-bold text-main">{currentUser?.name || currentUser?.email || 'Volunteer User'}</h1>
-                        <p className="text-primary font-medium capitalize">{currentUser?.role || 'Volunteer'}</p>
+                    <div className="flex flex-col md:flex-row gap-2 items-center md:items-start">
+                        <h1 className="text-2xl font-bold text-main">{displayName}</h1>
+                        <button
+                            onClick={() => setIsEditingName(true)}
+                            className="p-1 text-gray-400 hover:text-primary transition-colors"
+                        >
+                            <Edit2 size={16} />
+                        </button>
                     </div>
+                    <p className="text-primary font-medium capitalize">{currentUser?.role || 'Volunteer'}</p>
 
                     <div className="flex flex-wrap justify-center md:justify-start gap-3 text-sm text-muted">
                         <span className="flex items-center gap-1">
@@ -138,6 +147,15 @@ const Profile = () => {
                     <Badge icon={Trophy} label="Legend" locked={true} />
                 </div>
             </div>
+
+            {/* Edit Name Modal */}
+            {isEditingName && (
+                <EditProfileNameModal
+                    user={{ ...currentUser, name: displayName }}
+                    onClose={() => setIsEditingName(false)}
+                    onUpdate={setDisplayName}
+                />
+            )}
         </div>
     );
 };

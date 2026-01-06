@@ -92,10 +92,22 @@ function App() {
                 <Route path="wiki" element={<Wiki />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="profile" element={<Profile />} />
-                <Route path="volunteers" element={<VolunteerCalendar />} />
-                <Route path="calendar" element={<Calendar />} />
+                <Route path="volunteers" element={
+                  <RestrictedRoute>
+                    <VolunteerCalendar />
+                  </RestrictedRoute>
+                } />
+                <Route path="calendar" element={
+                  <RestrictedRoute>
+                    <Calendar />
+                  </RestrictedRoute>
+                } />
                 <Route path="location" element={<Location />} />
-                <Route path="shopping" element={<Shopping />} />
+                <Route path="shopping" element={
+                  <RestrictedRoute>
+                    <Shopping />
+                  </RestrictedRoute>
+                } />
               </Route>
             </Routes>
           </Router>
@@ -110,6 +122,16 @@ function ProtectedRoute({ children }) {
 
   if (!currentUser) {
     return <Navigate to="/login" />;
+  }
+
+  return children;
+}
+
+function RestrictedRoute({ children }) {
+  const { currentUser } = useAuth();
+
+  if (currentUser?.role === 'volunteer') {
+    return <Navigate to="/" replace />;
   }
 
   return children;
