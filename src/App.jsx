@@ -20,6 +20,7 @@ import Calendar from './pages/Calendar';
 import VolunteerCalendar from './pages/VolunteerCalendar';
 import Location from './pages/Location';
 import Shopping from './pages/Shopping';
+import BarPOS from './pages/BarPOS';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { useEffect } from 'react';
 
@@ -108,6 +109,8 @@ function App() {
                     <Shopping />
                   </RestrictedRoute>
                 } />
+                {/* Bar POS Route */}
+                <Route path="bar" element={<BarPOS />} />
               </Route>
             </Routes>
           </Router>
