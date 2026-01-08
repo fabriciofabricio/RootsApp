@@ -7,15 +7,18 @@ import { useAuth } from '../context/AuthContext';
 import { useDemo } from '../context/DemoContext';
 import AddUserForm from '../components/AddUserForm';
 import EditUserForm from '../components/EditUserForm';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { archiveUser, unarchiveUser } from '../services/userService';
+import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../services/firebaseConfig';
+import clsx from 'clsx';
 
 const Settings = () => {
     const { theme, toggleTheme } = useTheme();
-    const { isDemoMode, toggleDemoMode } = useDemo();
+    const { isDemoMode, toggleDemoMode } = useDemo(); // Not used? Keeping if used elsewhere or removing if unused warning.
     const { currentUser } = useAuth();
     const navigate = useNavigate();
     const [showAddUser, setShowAddUser] = useState(false);
+    const [showArchived, setShowArchived] = useState(false);
 
     // Edit User State
     const [users, setUsers] = useState([]);
@@ -73,6 +76,39 @@ const Settings = () => {
         }
     };
 
+    const handleArchiveUser = async (userId) => {
+        if (window.confirm("Are you sure you want to archive this user? They will disappear from schedules.")) {
+            await archiveUser(userId);
+            handleUserUpdated();
+        }
+    };
+
+    const handleUnarchiveUser = async (userId) => {
+        await unarchiveUser(userId);
+        handleUserUpdated();
+    };
+
+    const handleToggleScheduleVisibility = async (userId, currentStatus) => {
+        // currentStatus is user.showInSchedule. If undefined, it treats as true, so toggle makes it false.
+        const newStatus = currentStatus === false ? true : false;
+
+        try {
+            const userRef = doc(db, "users", userId);
+            await updateDoc(userRef, {
+                showInSchedule: newStatus
+            });
+
+            // Optimistic update locally
+            setUsers(users.map(u =>
+                u.id === userId ? { ...u, showInSchedule: newStatus } : u
+            ));
+        } catch (error) {
+            console.error("Error updating visibility:", error);
+        }
+    };
+
+    const filteredUsers = users.filter(user => showArchived ? user.archived : !user.archived);
+
     return (
         <div className="pb-20 md:pb-0 max-w-lg mx-auto relative">
             <h1 className="text-3xl font-bold text-main mb-6">Settings</h1>
@@ -120,25 +156,88 @@ const Settings = () => {
                                 </button>
                             </div>
 
-                            {/* Users List */}
+                            {/* Users List Header & Toggle */}
+                            <div className="flex items-center justify-between px-1">
+                                <h3 className="text-sm font-medium text-main">Team Members</h3>
+                                <button
+                                    onClick={() => setShowArchived(!showArchived)}
+                                    className="text-xs text-primary hover:underline"
+                                >
+                                    {showArchived ? 'Hide Archived' : 'Show Archived'}
+                                </button>
+                            </div>
+
                             <div className="bg-surface rounded-xl overflow-hidden border border-white/5 divide-y divide-white/5">
                                 {loadingUsers ? (
                                     <div className="p-4 text-center text-muted text-sm">Loading users...</div>
-                                ) : users.length === 0 ? (
-                                    <div className="p-4 text-center text-muted text-sm">No other users found.</div>
+                                ) : filteredUsers.length === 0 ? (
+                                    <div className="p-4 text-center text-muted text-sm">No {showArchived ? 'archived ' : ''}users found.</div>
                                 ) : (
-                                    users.map(user => (
-                                        <div key={user.uid || user.id} className="p-4 flex items-center justify-between">
-                                            <div className="flex flex-col">
-                                                <span className="text-main font-medium text-sm">{user.name || user.email}</span>
-                                                <span className="text-xs text-muted capitalize">{user.role}</span>
+                                    filteredUsers.map(user => (
+                                        <div key={user.uid || user.id} className="p-4 flex items-center justify-between bg-surface hover:bg-white/5 transition-colors group">
+                                            <div className="flex items-center gap-3">
+                                                <div className={clsx("w-2 h-2 rounded-full", user.archived ? "bg-red-500" : "bg-green-500")} />
+                                                <div className="flex flex-col">
+                                                    <span className={clsx("text-main font-medium text-sm", user.archived && "line-through opacity-50")}>
+                                                        {user.name || user.email}
+                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs text-muted capitalize">{user.role}</span>
+                                                        {user.mainShift && (
+                                                            <span className="text-[10px] px-1.5 py-0.5 bg-white/10 rounded text-muted">
+                                                                {user.mainShift}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <button
-                                                onClick={() => setEditingUser({ ...user, uid: user.id })}
-                                                className="text-xs font-semibold text-primary hover:text-white px-3 py-1 bg-primary/10 rounded-lg transition-colors"
-                                            >
-                                                Edit
-                                            </button>
+
+                                            <div className="flex items-center gap-4">
+                                                {/* Show in Schedule Toggle */}
+                                                {!user.archived && (
+                                                    <div className="flex items-center gap-2">
+                                                        <label className="relative inline-flex items-center cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="sr-only peer"
+                                                                checked={user.showInSchedule !== false} // Default true
+                                                                onChange={() => handleToggleScheduleVisibility(user.id, user.showInSchedule)}
+                                                            />
+                                                            <div className="w-9 h-5 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                                                            <span className="ml-2 text-[10px] font-medium text-muted uppercase tracking-wide">
+                                                                {user.showInSchedule !== false ? 'Shown' : 'Hidden'}
+                                                            </span>
+                                                        </label>
+                                                    </div>
+                                                )}
+
+                                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    {!user.archived ? (
+                                                        <>
+                                                            <button
+                                                                onClick={() => setEditingUser({ ...user, uid: user.id })}
+                                                                className="text-xs font-semibold text-primary hover:text-white px-3 py-1 bg-primary/10 rounded-lg transition-colors"
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleArchiveUser(user.id)}
+                                                                className="p-1.5 text-muted hover:text-red-400 transition-colors"
+                                                                title="Archive User"
+                                                            >
+                                                                <LogOut size={16} />
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleUnarchiveUser(user.id)}
+                                                            className="text-xs font-semibold text-green-400 hover:text-green-300 px-3 py-1 bg-green-500/10 rounded-lg transition-colors"
+                                                        >
+                                                            Unarchive
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                     ))
                                 )}

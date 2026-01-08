@@ -105,7 +105,7 @@ function App() {
                 } />
                 <Route path="location" element={<Location />} />
                 <Route path="shopping" element={
-                  <RestrictedRoute>
+                  <RestrictedRoute allowBreakfastBar={true}>
                     <Shopping />
                   </RestrictedRoute>
                 } />
@@ -130,10 +130,13 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
-function RestrictedRoute({ children }) {
+function RestrictedRoute({ children, allowBreakfastBar = false }) {
   const { currentUser } = useAuth();
 
   if (currentUser?.role === 'volunteer') {
+    if (allowBreakfastBar && (currentUser.mainShift === 'Breakfast' || currentUser.mainShift === 'Bar')) {
+      return children;
+    }
     return <Navigate to="/" replace />;
   }
 

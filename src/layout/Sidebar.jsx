@@ -1,4 +1,4 @@
-import { Home, Users, Camera, Utensils, ClipboardCheck, Calendar, MapPin, Settings, User, Book, X, ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react';
+import { Home, Users, Camera, Utensils, ClipboardCheck, Calendar, MapPin, Settings, User, Book, X, ChevronLeft, ChevronRight, ShoppingCart, Beer } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 import clsx from 'clsx';
@@ -31,6 +31,7 @@ const navItems = [
     { icon: Camera, label: 'Moments', path: '/moments' },
     { icon: Utensils, label: 'Kitchen', path: '/kitchen' },
     { icon: ShoppingCart, label: 'Shopping', path: '/shopping' },
+    { icon: Beer, label: 'Bar', path: '/bar' },
     { icon: ClipboardCheck, label: 'Operations', path: '/operations' },
     { icon: ScheduleIcon, label: 'Schedules', path: '/schedules' },
     { icon: MapPin, label: 'City Explorer', path: '/city' },
@@ -47,7 +48,10 @@ const Sidebar = ({ isOpen, toggleSidebar, isCollapsed, toggleCollapse }) => {
 
     const filteredNavItems = navItems.filter(item => {
         if (currentUser?.role === 'volunteer') {
-            return !['Calendar', 'Shopping', 'Volunteers'].includes(item.label);
+            if (item.label === 'Shopping') {
+                return (currentUser.mainShift === 'Breakfast' || currentUser.mainShift === 'Bar');
+            }
+            return !['Calendar', 'Volunteers'].includes(item.label);
         }
         return true;
     });

@@ -1,6 +1,6 @@
 import { initializeApp, getApp, deleteApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword, signOut } from "firebase/auth";
-import { doc, setDoc, updateDoc, arrayUnion, Timestamp } from "firebase/firestore";
+import { doc, setDoc, updateDoc, arrayUnion, Timestamp, collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "./firebaseConfig";
 
 // Re-use the config from your main config file or duplicate it here if not exported
@@ -18,10 +18,12 @@ const firebaseConfig = {
  * 
  * @param {string} email 
  * @param {string} password 
- * @param {string} role - 'volunteer' | 'staff' | 'manager'
+ * @param {string} role - 'volunteer' | 'staff' | 'manager' | 'intern'
+ * @param {string} name
+ * @param {string} mainShift - Optional main shift for volunteers
  * @param {object} adminUser - The current admin user object (must contain workspaceId)
  */
-export const createSecondaryUser = async (email, password, role, name, adminUser) => {
+export const createSecondaryUser = async (email, password, role, name, mainShift, adminUser) => {
     // 1. Initialize a secondary app instance
     const secondaryAppName = "secondaryApp";
     let secondaryApp;
@@ -49,10 +51,12 @@ export const createSecondaryUser = async (email, password, role, name, adminUser
             email: newUser.email,
             role: role,
             name: name,
+            mainShift: mainShift || null, // Add mainShift
             workspaceId: adminUser.workspaceId,
             hostelName: adminUser.hostelName || '',
             createdAt: new Date().toISOString(),
-            createdBy: adminUser.uid
+            createdBy: adminUser.uid,
+            archived: false // Default to not archived
         });
 
         // 4. Sign out the secondary user immediately so it doesn't interfere
@@ -94,4 +98,51 @@ export const updateUserName = async (userId, newName, oldName) => {
     }
 
     await updateDoc(userRef, updateData);
+};
+
+/**
+ * Archives a user account.
+ * @param {string} userId 
+ */
+export const archiveUser = async (userId) => {
+    if (!userId) return;
+    const userRef = doc(db, "users", userId);
+    await updateDoc(userRef, {
+        archived: true,
+        archivedAt: Timestamp.now()
+    });
+};
+
+/**
+ * Unarchives a user account.
+ * @param {string} userId 
+ */
+export const unarchiveUser = async (userId) => {
+    if (!userId) return;
+    const userRef = doc(db, "users", userId);
+    await updateDoc(userRef, {
+        archived: false,
+        archivedAt: null // Clear archivedAt or keep history? clearing for now.
+    });
+};
+
+/**
+ * Fetches all users from the database.
+ * @returns {Promise<Array>} Array of user objects
+ */
+export const getUsers = async () => {
+    try {
+        const usersRef = collection(db, "users");
+        // Sort by name alphabetically
+        const q = query(usersRef, orderBy("name"));
+        const snapshot = await getDocs(q);
+
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+    } catch (error) {
+        console.error("Error fetching users:", error);
+        throw error;
+    }
 };

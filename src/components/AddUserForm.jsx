@@ -31,6 +31,7 @@ const AddUserForm = ({ onClose }) => {
                 formData.password,
                 formData.role,
                 formData.name,
+                formData.role === 'volunteer' ? (formData.mainShift || 'Breakfast') : null,
                 currentUser
             );
             setSuccess(true);
@@ -117,18 +118,37 @@ const AddUserForm = ({ onClose }) => {
                     />
                 </div>
 
-                <div>
-                    <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5 ml-1">Role</label>
-                    <select
-                        name="role"
-                        value={formData.role}
-                        onChange={handleChange}
-                        className="w-full bg-background border border-gray-700 text-main rounded-xl px-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-main"
-                    >
-                        <option value="volunteer">Volunteer</option>
-                        <option value="staff">Staff</option>
-                        <option value="manager">Manager</option>
-                    </select>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5 ml-1">Role</label>
+                        <select
+                            name="role"
+                            value={formData.role}
+                            onChange={handleChange}
+                            className="w-full bg-background border border-gray-700 text-main rounded-xl px-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-main"
+                        >
+                            <option value="volunteer">Volunteer</option>
+                            <option value="intern">Intern</option>
+                            <option value="staff">Staff</option>
+                            <option value="manager">Manager</option>
+                        </select>
+                    </div>
+
+                    {formData.role === 'volunteer' && (
+                        <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                            <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-1.5 ml-1">Main Activity</label>
+                            <select
+                                name="mainShift"
+                                value={formData.mainShift || 'Breakfast'}
+                                onChange={handleChange}
+                                className="w-full bg-background border border-gray-700 text-main rounded-xl px-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-main"
+                            >
+                                <option value="Breakfast">Breakfast</option>
+                                <option value="Cleaning">Cleaning</option>
+                                <option value="Bar">Bar</option>
+                            </select>
+                        </div>
+                    )}
                 </div>
 
                 <button
